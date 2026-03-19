@@ -1,0 +1,61 @@
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+const app = express();
+
+app.use(express.json());
+app.use(express.static('public'));
+
+// Database setup
+const db = new sqlite3.Database('./chezbirgurs.db');
+db.run(`CREATE TABLE IF NOT EXISTS finds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brainrot_name TEXT,
+    income TEXT,
+    tier INTEGER,
+    username TEXT,
+    player_count INTEGER,
+    job_id TEXT,
+    server_link TEXT,
+    image_url TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// API Endpoint - Receive logs from Lua script
+app.post('/api/log', (req, res) => {
+    const { brainrot_name, income, tier, username, player_count, job_id, server_link, image_url } = req.body;
+    
+    db.run(`INSERT INTO finds (brainrot_name, income, tier, username, player_count, job_id, server_link, image_url) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [brainrot_name, income, tier, username, player_count, job_id, server_link, image_url],
+        function(err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Failed to save' });
+            }
+            res.json({ success: true, id: this.lastID });
+        }
+    );
+});
+
+// Get all logs
+app.get('/api/logs', (req, res) => {
+    db.all(`SELECT * FROM finds ORDER BY timestamp DESC LIMIT 100`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// Stats endpoint
+app.get('/api/stats', (req, res) => {
+    db.get(`SELECT COUNT(*) as total_finds, 
+            COUNT(DISTINCT username) as unique_users,
+            MAX(timestamp) as last_find
+            FROM finds`, [], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(row);
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`ChezBirgurs API running on port ${PORT}`));
