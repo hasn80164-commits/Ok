@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChezBirgurs Notifier Dashboard</title>
+    <style>
+        body { font-family: Arial; background: #1a1a1a; color: #fff; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .stats { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; }
+        .stat-box { background: #2d2d2d; padding: 20px; border-radius: 10px; min-width: 150px; text-align: center; }
+        .stat-box h3 { margin: 0; color: #00ff88; font-size: 24px; }
+        .find { background: #2d2d2d; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; }
+        .find img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
+        .find-info { flex: 1; }
+        .find-title { font-size: 18px; font-weight: bold; color: #ffd700; }
+        .find-value { color: #ff6b6b; font-size: 16px; }
+        .find-meta { color: #888; font-size: 12px; margin-top: 5px; }
+        .tier-100m { border-left: 4px solid #800080; }
+        .tier-50m { border-left: 4px solid #ffa500; }
+        .tier-10m { border-left: 4px solid #00ff00; }
+        .join-btn { background: #5865F2; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px; }
+        .refresh { position: fixed; top: 20px; right: 20px; background: #00ff88; color: #000; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <button class="refresh" onclick="loadData()">Refresh</button>
+    
+    <div class="header">
+        <h1>🍔 ChezBirgurs Notifier Dashboard</h1>
+        <p>Real-time Brainrot Scanner Logs</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-box">
+            <h3 id="total-finds">0</h3>
+            <p>Total Finds</p>
+        </div>
+        <div class="stat-box">
+            <h3 id="unique-users">0</h3>
+            <p>Active Scanners</p>
+        </div>
+        <div class="stat-box">
+            <h3 id="last-find">--</h3>
+            <p>Last Find</p>
+        </div>
+    </div>
+    
+    <div id="logs"></div>
+
+    <script>
+        async function loadData() {
+            const [logsRes, statsRes] = await Promise.all([
+                fetch('/api/logs'),
+                fetch('/api/stats')
+            ]);
+            
+            const logs = await logsRes.json();
+            const stats = await statsRes.json();
+            
+            document.getElementById('total-finds').textContent = stats.total_finds;
+            document.getElementById('unique-users').textContent = stats.unique_users;
+            document.getElementById('last-find').textContent = stats.last_find ? new Date(stats.last_find).toLocaleTimeString() : '--';
+            
+            const logsHtml = logs.map(find => `
+                <div class="find tier-${find.tier === 100000000 ? '100m' : find.tier === 50000000 ? '50m' : '10m'}">
+                    <img src="${find.image_url || 'https://via.placeholder.com/64'}" onerror="this.src='https://via.placeholder.com/64'">
+                    <div class="find-info">
+                        <div class="find-title">${find.brainrot_name}</div>
+                        <div class="find-value">💰 ${find.income}</div>
+                        <div class="find-meta">
+                            Found by: ${find.username} | 
+                            Server: ${find.player_count} players | 
+                            ${new Date(find.timestamp).toLocaleString()}
+                        </div>
+                    </div>
+                    <a href="${find.server_link}" target="_blank" class="join-btn">Join Server</a>
+                </div>
+            `).join('');
+            
+            document.getElementById('logs').innerHTML = logsHtml;
+        }
+        
+        loadData();
+        setInterval(loadData, 5000); // Auto-refresh every 5 seconds
+    </script>
+</body>
+</html>
